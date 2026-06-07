@@ -54,8 +54,12 @@ function extractBotpressTexts(body) {
   items.push(body);
 
   return items
-    .map((item) => item.text || item.payload?.text || item.message?.payload?.text || item.content)
+    .map((item) => item.text || item.payload?.text || item.message?.payload?.text || item.message || item.content)
     .filter((text) => typeof text === 'string' && text.trim().length > 0);
+}
+
+function handleBotpressEndpointCheck(_req, res) {
+  return res.status(200).json({ status: 'ready' });
 }
 
 app.get('/', (_req, res) => {
@@ -122,19 +126,23 @@ app.post('/chatwoot/webhook', async (req, res) => {
 
 async function handleBotpressResponse(req, res) {
   try {
-    requireConfig(['chatwootBaseUrl', 'chatwootAccountId', 'chatwootApiToken']);
+    const payload = req.body || {};
+    if (Object.keys(payload).length === 0) {
+      return res.status(200).json({ status: 'ready' });
+    }
 
-    const payload = req.body;
     const chatwootConvId = extractChatwootConversationId(payload);
     const texts = extractBotpressTexts(payload);
 
     if (!chatwootConvId) {
-      return res.status(400).json({ error: 'missing chatwoot conversation id' });
+      return res.status(200).json({ status: 'skipped', reason: 'missing_chatwoot_conversation_id' });
     }
 
     if (texts.length === 0) {
       return res.status(200).json({ status: 'skipped', reason: 'no_text' });
     }
+
+    requireConfig(['chatwootBaseUrl', 'chatwootAccountId', 'chatwootApiToken']);
 
     for (const text of texts) {
       await axios.post(
@@ -162,19 +170,32 @@ async function handleBotpressResponse(req, res) {
   }
 }
 
+app.get('/botpress/webhook', handleBotpressEndpointCheck);
+app.head('/botpress/webhook', (_req, res) => res.sendStatus(200));
+app.options('/botpress/webhook', handleBotpressEndpointCheck);
 app.post('/botpress/webhook', handleBotpressResponse);
+app.get('/botpress/response', handleBotpressEndpointCheck);
+app.head('/botpress/response', (_req, res) => res.sendStatus(200));
+app.options('/botpress/response', handleBotpressEndpointCheck);
 app.post('/botpress/response', handleBotpressResponse);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  const missing = [];
-  if (!config.botpressWebhookUrl) missing.push('BOTPRESS_WEBHOOK_URL');
-  if (!config.chatwootBaseUrl) missing.push('CHATWOOT_BASE_URL or CHATWOOT_URL');
-  if (!config.chatwootAccountId) missing.push('CHATWOOT_ACCOUNT_ID');
-  if (!config.chatwootApiToken) missing.push('CHATWOOT_API_TOKEN or CHATWOOT_API_KEY');
+function startServer(port = process.env.PORT || 3000) {
+  return app.listen(port, () => {
+    const missing = [];
+    if (!config.botpressWebhookUrl) missing.push('BOTPRESS_WEBHOOK_URL');
+    if (!config.chatwootBaseUrl) missing.push('CHATWOOT_BASE_URL or CHATWOOT_URL');
+    if (!config.chatwootAccountId) missing.push('CHATWOOT_ACCOUNT_ID');
+    if (!config.chatwootApiToken) missing.push('CHATWOOT_API_TOKEN or CHATWOOT_API_KEY');
 
-  console.log(`Bridge server running on port ${PORT}`);
-  if (missing.length > 0) {
-    console.warn(`Missing configuration: ${missing.join(', ')}`);
-  }
-});
+    console.log(`Bridge server running on port ${port}`);
+    if (missing.length > 0) {
+      console.warn(`Missing configuration: ${missing.join(', ')}`);
+    }
+  });
+}
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

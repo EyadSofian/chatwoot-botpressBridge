@@ -31,6 +31,8 @@ PORT=3000
 - `POST /botpress/webhook` - Botpress to Chatwoot
 - `POST /botpress/response` - Botpress to Chatwoot response endpoint alias
 
+`GET` and `HEAD` on the Botpress endpoints return `200` so Botpress can validate the response endpoint during registration.
+
 ## Local Run
 
 ```bash
