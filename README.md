@@ -1,32 +1,41 @@
-# Chatwoot ↔ Botpress Bridge
+# Chatwoot Botpress Bridge
 
-## URLs بعد الـ Deploy على Railway
+Small Express bridge that forwards incoming Chatwoot messages to Botpress and sends Botpress responses back to Chatwoot.
 
-| Endpoint | الاستخدام |
-|----------|-----------|
-| `POST /chatwoot/webhook` | حطه في Chatwoot → Agent Bot Webhook |
-| `POST /botpress/response` | حطه في Botpress → Messaging API → Response Endpoint URL |
+## Railway Deploy
 
-## خطوات الـ Deploy على Railway
+This project does not need a build step. `railway.toml` sets the Nixpacks build command to a no-op, and `npm run build` is also available as a no-op fallback.
 
-1. ارفع الـ repo على GitHub
-2. اعمل New Project على Railway من الـ repo
-3. حط الـ Environment Variables:
-   - `CHATWOOT_URL` = https://chat.engosoft.com
-   - `CHATWOOT_API_KEY` = Buvw2SUpLEJPydCEywhdUd8H
-   - `CHATWOOT_ACCOUNT_ID` = 2
-   - `BOTPRESS_WEBHOOK_URL` = https://webhook.botpress.cloud/2ea5aae3-c1af-49c5-844e-6396d07c9b6e
-4. بعد الـ deploy خد الـ Railway URL
+Required Railway variables:
 
-## إعداد Chatwoot
+```env
+CHATWOOT_BASE_URL=https://your-chatwoot.example.com
+CHATWOOT_ACCOUNT_ID=your_account_id
+CHATWOOT_API_TOKEN=your_chatwoot_api_token
+BOTPRESS_WEBHOOK_URL=https://webhook.botpress.cloud/your-webhook-id
+```
 
-Settings → Integrations → Agent Bots → New Bot:
-- Webhook URL: `https://YOUR-RAILWAY-URL/chatwoot/webhook`
+Optional:
 
-ربط الـ Bot بالـ Inbox:
-Settings → Inboxes → اختار الـ Inbox → Configuration → Agent Bot
+```env
+BOTPRESS_PAT=optional_botpress_pat
+PORT=3000
+```
 
-## إعداد Botpress
+`CHATWOOT_URL` and `CHATWOOT_API_KEY` are also supported as aliases for older deployments.
 
-Integrations → Messaging API → Enable:
-- Response Endpoint URL: `https://YOUR-RAILWAY-URL/botpress/response`
+## Endpoints
+
+- `GET /` - health check
+- `POST /chatwoot/webhook` - Chatwoot to Botpress
+- `POST /botpress/webhook` - Botpress to Chatwoot
+- `POST /botpress/response` - Botpress to Chatwoot response endpoint alias
+
+## Local Run
+
+```bash
+npm install
+npm start
+```
+
+Set the environment variables before testing real Chatwoot or Botpress traffic.
